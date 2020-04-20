@@ -1,0 +1,54 @@
+FROM debian:bullseye-slim
+
+# --------------------------------------------------------------------------
+# This Dockerfile performs the following build actions:
+# - Clone Shinobi from https://gitlab.com/Shinobi-Systems/Shinobi.git
+# - Install Shinobi npm packages 
+# - Replace 'localhost' with ${SHINOBI_SERVER_IP} in Yolo plugin config file
+# 
+# It serves to run the yolo plugin, configured to connect to an instance of
+# shinboi running on a separate machine / container. 
+#
+# Usage:
+# docker build -f Dockerfile.debian --build-arg SHINOBI_SERVER_IP=<ip> -t yolo_debian_shinobi .
+# docker run --rm -it yolo_debian_shinobi /bin/bash
+#
+# /opt/shinobi/plugins/yolo # sh INSTALL.sh 
+# /opt/shinobi/plugins/yolo # node shinobi-yolo.js
+# --------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------
+# IP address of host running Shinobi
+# --------------------------------------------------------------------------
+ARG SHINOBI_SERVER_IP
+
+# --------------------------------------------------------------------------
+# Install Shinobi modules and prepare config for yolo plugin
+# so that host refers to ${SHINOBI_SERVER_IP}
+# --------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+        build-essential \
+        curl \
+        git \
+        npm \
+        python \
+        wget \
+    \    
+    && git clone -b master --single-branch \
+        https://gitlab.com/Shinobi-Systems/Shinobi.git /opt/shinobi/ \
+    \
+    && cd /opt/shinobi \
+    && npm install --unsafe-perm \
+    && cp conf.sample.json conf.json \
+    \
+    && cd /opt/shinobi/plugins/yolo \
+    && cp conf.sample.json conf.json \
+    && sed -i "s/localhost/${SHINOBI_SERVER_IP}/g" conf.json \
+    \
+    && rm -rf /var/lib/apt/lists/*
+
+# --------------------------------------------------------------------------
+# Set working directory of container to yolo plugin
+# --------------------------------------------------------------------------
+WORKDIR /opt/shinobi/plugins/yolo
